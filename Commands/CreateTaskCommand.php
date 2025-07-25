@@ -149,11 +149,16 @@ class CreatetaskCommand extends UserCommand
 
                     $pdo->prepare("DELETE FROM user_states WHERE chat_id = :chat_id")->execute(['chat_id' => $chat_id]);
 
-                    return Request::sendMessage([
+                                        return Request::sendMessage([
                         'chat_id' => $chat_id,
                         'text'    => '✅ تسک شما با موفقیت ثبت شد!',
-                        'reply_markup' => ['remove_keyboard' => true],
+                        'reply_markup' => new \Longman\TelegramBot\Entities\Keyboard(
+                            ['➕ ایجاد برنامه جدید'],
+                            ['📅 برنامه‌های من'],
+                            ['📊 گزارش عملکرد']
+                        )->setResizeKeyboard(true)->setOneTimeKeyboard(false),
                     ]);
+
                 } elseif ($text === 'لغو') {
                     $pdo->prepare("DELETE FROM user_states WHERE chat_id = :chat_id")->execute(['chat_id' => $chat_id]);
 
