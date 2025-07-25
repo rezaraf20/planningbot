@@ -16,7 +16,7 @@ class GenericmessageCommand extends SystemCommand
     public function execute(): ServerResponse
     {
         ini_set("log_errors", 1);
-        ini_set("error_log", __DIR__ . '/../bot-log/debug.log');  
+        ini_set("error_log", __DIR__ . '/../bot-log/debug.log');  // تنظیم محل لاگ
         error_log('📌 genericmessageCommand: started');
 
         $message = $this->getMessage();
@@ -30,10 +30,46 @@ class GenericmessageCommand extends SystemCommand
         $state = $stmt->fetch();
 
         if ($state) {
-            error_log('➡️ Forwarding to createtask (active state: ' . $state['step'] . ')');
-            return $this->telegram->executeCommand('createtask');
+    $step = $state['step'];
+    error_log('➡️ Forwarding to createtask (active state: ' . $step . ')');
 
+    if ($step === 'confirm') {
+        if ($text === 'ثبت') {
+            $stmt_insert = $pdo->prepare("
+                INSERT INTO tasks (chat_id, title, description, date, time, repeat_type, created_at)
+                SELECT chat_id, current_task_title, current_task_description, current_task_date, current_task_time, current_task_repeat, NOW()
+                FROM user_states
+                WHERE chat_id = :chat_id
+            ");
+            $stmt_insert->execute(['chat_id' => $chat_id]);
+
+            $pdo->prepare("DELETE FROM user_states WHERE chat_id = :chat_id")->execute(['chat_id' => $chat_id]);
+
+            return Request::sendMessage([
+                'chat_id' => $chat_id,
+                'text' => '✅ تسک شما با موفقیت ثبت شد!',
+                'reply_markup' => ['remove_keyboard' => true],
+            ]);
         }
+
+        if ($text === 'لغو') {
+            $pdo->prepare("DELETE FROM user_states WHERE chat_id = :chat_id")->execute(['chat_id' => $chat_id]);
+
+            return Request::sendMessage([
+                'chat_id' => $chat_id,
+                'text' => '❌ فرآیند ایجاد تسک لغو شد.',
+                'reply_markup' => ['remove_keyboard' => true],
+            ]);
+        }
+
+        return Request::sendMessage([
+            'chat_id' => $chat_id,
+            'text' => 'لطفاً یکی از گزینه‌های "ثبت" یا "لغو" را انتخاب کنید.',
+        ]);
+    }
+    return $this->telegram->executeCommand('createtask');
+}
+
 
         if ($text === '➕ ایجاد برنامه جدید') {
             error_log('➡️ User selected create task from main menu');
